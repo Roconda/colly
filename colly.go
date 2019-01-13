@@ -176,6 +176,8 @@ var (
 	// ErrForbiddenURL is the error thrown if visiting
 	// a URL which is not allowed by URLFilters
 	ErrForbiddenURL = errors.New("ForbiddenURL")
+	// ErrMalformedURL is the error for unparsable URLS
+	ErrMalformedURL = errors.New("MalformedURL")
 
 	// ErrNoURLFiltersMatch is the error thrown if visiting
 	// a URL which is not allowed by URLFilters
@@ -624,8 +626,12 @@ func (c *Collector) fetch(u, method string, depth int, requestData io.Reader, ct
 }
 
 func (c *Collector) requestCheck(u, method string, depth int, checkRevisit bool) error {
+	parsedURL, errURL := url.Parse(u)
 	if u == "" {
 		return ErrMissingURL
+	}
+	if errURL != nil {
+		return ErrMalformedURL
 	}
 	if c.MaxDepth > 0 && c.MaxDepth < depth {
 		return ErrMaxDepth
@@ -642,7 +648,7 @@ func (c *Collector) requestCheck(u, method string, depth int, checkRevisit bool)
 	}
 	if checkRevisit && !c.AllowURLRevisit && method == "GET" {
 		h := fnv.New64a()
-		h.Write([]byte(u))
+		h.Write([]byte(parsedURL.Host))
 		uHash := h.Sum64()
 		visited, err := c.store.IsVisited(uHash)
 		if err != nil {
